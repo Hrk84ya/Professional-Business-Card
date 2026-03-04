@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { FaLinkedinIn, FaTwitter, FaInstagram, FaGlobe, FaTimes, FaFilePdf, FaFileImage, FaDownload } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -472,37 +473,40 @@ const BusinessCard = ({ data }) => {
         </ExportBtn>
       </ButtonRow>
 
-      <AnimatePresence>
-        {showExport && (
-          <Overlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={e => e.target === e.currentTarget && setShowExport(false)}
-          >
-            <Modal
-              initial={{ opacity: 0, y: 20, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.96 }}
-              transition={{ duration: 0.2 }}
+      {ReactDOM.createPortal(
+        <AnimatePresence>
+          {showExport && (
+            <Overlay
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={e => e.target === e.currentTarget && setShowExport(false)}
             >
-              <CloseBtn onClick={() => setShowExport(false)}><FaTimes size={12} /></CloseBtn>
-              <ModalTitle>Export Card</ModalTitle>
-              <ModalSub>Download your card in your preferred format</ModalSub>
-              <ExportOptions>
-                <ExportOption onClick={exportJPEG}>
-                  <FaFileImage size={28} color="#a8edea" />
-                  JPEG Image
-                </ExportOption>
-                <ExportOption onClick={exportPDF}>
-                  <FaFilePdf size={28} color="#f6a0a0" />
-                  PDF File
-                </ExportOption>
-              </ExportOptions>
-            </Modal>
-          </Overlay>
-        )}
-      </AnimatePresence>
+              <Modal
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+              >
+                <CloseBtn onClick={() => setShowExport(false)}><FaTimes size={12} /></CloseBtn>
+                <ModalTitle>Export Card</ModalTitle>
+                <ModalSub>Download your card in your preferred format</ModalSub>
+                <ExportOptions>
+                  <ExportOption onClick={exportJPEG}>
+                    <FaFileImage size={28} color="#a8edea" />
+                    JPEG Image
+                  </ExportOption>
+                  <ExportOption onClick={exportPDF}>
+                    <FaFilePdf size={28} color="#f6a0a0" />
+                    PDF File
+                  </ExportOption>
+                </ExportOptions>
+              </Modal>
+            </Overlay>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </Wrapper>
   );
 };
