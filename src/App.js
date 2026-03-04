@@ -1,102 +1,135 @@
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
 import BusinessCard from './components/BusinessCard';
 import CardForm from './components/CardForm';
 
+const GlobalStyle = createGlobalStyle`
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f0c29;
+  }
+`;
+
 const AppContainer = styled.div`
   min-height: 100vh;
-  background: #f0f2f5;
-  padding: 40px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  padding: 48px 20px 80px;
 `;
 
 const Header = styled.header`
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 56px;
+`;
+
+const Brand = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+`;
+
+const BrandDot = styled.span`
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  display: inline-block;
 `;
 
 const Title = styled.h1`
-  color: #2C3E50;
-  margin-bottom: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
 `;
 
 const Subtitle = styled.p`
-  color: #666;
-  margin: 0;
+  color: rgba(255,255,255,0.5);
+  font-size: 0.95rem;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
 `;
 
 const Content = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 48px;
   max-width: 1200px;
   margin: 0 auto;
 
-  @media (min-width: 992px) {
+  @media (min-width: 1024px) {
     flex-direction: row;
     align-items: flex-start;
     justify-content: center;
   }
 `;
 
-const CardPreview = styled.div`
+const PreviewPanel = styled.div`
   flex: 1;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  padding: 20px;
+  gap: 24px;
+  position: sticky;
+  top: 40px;
 `;
 
-const FormWrapper = styled.div`
+const PreviewLabel = styled.p`
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+`;
+
+const FormPanel = styled.div`
   flex: 1;
-  max-width: 500px;
+  max-width: 520px;
+  width: 100%;
 `;
 
 function App() {
   const [cardData, setCardData] = useState({
-    title: 'VISIONARY VOGUE',
-    subtitle: 'TITLE',
-    socialMedia: '@SOCIALMEDIAHANDLES',
-    website: 'WWW.WEBSITE.COM',
-    email: 'MYWORKGMAIL.COM',
-    phone: '123-456-789',
-    facebook: '',
+    name: 'Alexandra Chen',
+    title: 'Creative Director',
+    company: 'Vogue Studio',
+    socialHandle: '@alexandrachen',
+    website: 'alexandrachen.com',
+    email: 'hello@alexandrachen.com',
+    phone: '+1 (555) 000-1234',
+    linkedin: '',
     twitter: '',
-    instagram: ''
+    instagram: '',
+    theme: 'midnight',
   });
 
-  const handleCardUpdate = (newData) => {
-    setCardData(newData);
-  };
-
   return (
-    <AppContainer>
-      <Header>
-        <Title>Professional Card Maker</Title>
-        <Subtitle>Create your custom business card</Subtitle>
-      </Header>
-      <Content>
-        <CardPreview>
-          <BusinessCard 
-            title={cardData.title}
-            subtitle={cardData.subtitle}
-            socialMedia={cardData.socialMedia}
-            website={cardData.website}
-            email={cardData.email}
-            phone={cardData.phone}
-            facebook={cardData.facebook}
-            twitter={cardData.twitter}
-            instagram={cardData.instagram}
-          />
-        </CardPreview>
-        <FormWrapper>
-          <CardForm onCardUpdate={handleCardUpdate} />
-        </FormWrapper>
-      </Content>
-    </AppContainer>
+    <>
+      <GlobalStyle />
+      <AppContainer>
+        <Header>
+          <Brand>
+            <BrandDot />
+            <Title>Card Studio</Title>
+            <BrandDot />
+          </Brand>
+          <Subtitle>Design your professional business card</Subtitle>
+        </Header>
+        <Content>
+          <PreviewPanel>
+            <PreviewLabel>Live Preview</PreviewLabel>
+            <BusinessCard data={cardData} />
+          </PreviewPanel>
+          <FormPanel>
+            <CardForm data={cardData} onCardUpdate={setCardData} />
+          </FormPanel>
+        </Content>
+      </AppContainer>
+    </>
   );
 }
 

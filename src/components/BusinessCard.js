@@ -1,582 +1,509 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { FaFacebook, FaTwitter, FaInstagram, FaGlobe, FaShare, FaTimes, FaFilePdf, FaFileImage } from 'react-icons/fa';
-import { motion } from 'framer-motion';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { FaLinkedinIn, FaTwitter, FaInstagram, FaGlobe, FaTimes, FaFilePdf, FaFileImage, FaDownload } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const CardContainer = styled.div`
-  perspective: 1000px;
-  width: 350px;
-  height: 200px;
-  margin: 20px;
+const THEMES = {
+  midnight: {
+    front: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+    accent: '#e94560',
+    text: '#ffffff',
+    subtext: 'rgba(255,255,255,0.6)',
+    bottom: '#0f3460',
+    bottomText: '#ffffff',
+    bottomSub: 'rgba(255,255,255,0.65)',
+    icon: '#e94560',
+  },
+  slate: {
+    front: 'linear-gradient(135deg, #2d3561 0%, #1b1f3b 100%)',
+    accent: '#a8edea',
+    text: '#ffffff',
+    subtext: 'rgba(255,255,255,0.6)',
+    bottom: '#232741',
+    bottomText: '#ffffff',
+    bottomSub: 'rgba(255,255,255,0.65)',
+    icon: '#a8edea',
+  },
+  forest: {
+    front: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)',
+    accent: '#f6d365',
+    text: '#ffffff',
+    subtext: 'rgba(255,255,255,0.65)',
+    bottom: '#0d3b47',
+    bottomText: '#ffffff',
+    bottomSub: 'rgba(255,255,255,0.65)',
+    icon: '#f6d365',
+  },
+  rose: {
+    front: 'linear-gradient(135deg, #f953c6 0%, #b91d73 100%)',
+    accent: '#ffffff',
+    text: '#ffffff',
+    subtext: 'rgba(255,255,255,0.7)',
+    bottom: '#8c1558',
+    bottomText: '#ffffff',
+    bottomSub: 'rgba(255,255,255,0.65)',
+    icon: '#ffffff',
+  },
+  ivory: {
+    front: 'linear-gradient(135deg, #f5f5f0 0%, #e8e4dc 100%)',
+    accent: '#2c2c2c',
+    text: '#1a1a1a',
+    subtext: '#666666',
+    bottom: '#ffffff',
+    bottomText: '#1a1a1a',
+    bottomSub: '#888888',
+    icon: '#2c2c2c',
+  },
+  gold: {
+    front: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+    accent: '#d4af37',
+    text: '#ffffff',
+    subtext: 'rgba(255,255,255,0.6)',
+    bottom: '#111111',
+    bottomText: '#d4af37',
+    bottomSub: 'rgba(212,175,55,0.7)',
+    icon: '#d4af37',
+  },
+};
+
+// --- Styled Components ---
+
+const Wrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 `;
 
-const Card = styled(motion.div)`
+const CardScene = styled.div`
+  width: 460px;
+  height: 260px;
+  perspective: 1200px;
+
+  @media (max-width: 520px) {
+    width: 340px;
+    height: 192px;
+  }
+`;
+
+const CardInner = styled(motion.div)`
   width: 100%;
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.6s ease-in-out;
-  transform: ${({ flipped }) => (flipped ? 'rotateY(180deg)' : 'rotateY(0)')};
-  cursor: pointer;
-  will-change: transform;
-  backface-visibility: hidden;
 `;
 
 const CardFace = styled.div`
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  border-radius: 16px;
   backface-visibility: hidden;
-  border-radius: 10px;
+  -webkit-backface-visibility: hidden;
   overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  
-  /* Add this to ensure proper rendering in screenshots */
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.45), 0 8px 20px rgba(0,0,0,0.3);
 `;
 
-const CardFront = styled(CardFace).attrs({
-  className: 'card-face'
-})`
+const CardFront = styled(CardFace).attrs(() => ({}))`
+  background: ${({ theme }) => theme.front};
   display: flex;
   flex-direction: column;
 `;
 
-const ShareOverlay = styled(motion.div)`
+const CardBack = styled(CardFace)`
+  background: ${({ theme }) => theme.front};
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+`;
+
+const TopSection = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 24px 28px;
+  gap: 18px;
+`;
+
+const Avatar = styled.div`
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: ${({ theme }) => theme.accent};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.id === 'ivory' ? '#1a1a1a' : '#1a1a1a'};
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));
+`;
+
+const NameBlock = styled.div`
+  flex: 1;
+`;
+
+const CardName = styled.h2`
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.text};
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+`;
+
+const CardTitle = styled.p`
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.accent};
+  margin: 0 0 2px 0;
+`;
+
+const CardCompany = styled.p`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.subtext};
+  margin: 0;
+  font-weight: 300;
+`;
+
+const AccentLine = styled.div`
+  height: 1px;
+  margin: 0 28px;
+  background: ${({ theme }) => theme.accent};
+  opacity: 0.25;
+`;
+
+const BottomSection = styled.div`
+  background: ${({ theme }) => theme.bottom};
+  padding: 14px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ContactBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+`;
+
+const ContactItem = styled.p`
+  font-size: 0.65rem;
+  color: ${({ theme }) => theme.bottomSub};
+  margin: 0;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+`;
+
+const SocialIcons = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+`;
+
+const IconLink = styled.a`
+  color: ${({ theme }) => theme.icon};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid ${({ theme }) => theme.icon};
+  opacity: 0.85;
+  transition: opacity 0.2s;
+  &:hover { opacity: 1; }
+`;
+
+// Back face
+const BackName = styled.h2`
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ theme }) => theme.text};
+  letter-spacing: 1px;
+`;
+
+const BackTitle = styled.p`
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.accent};
+`;
+
+const BackLine = styled.div`
+  width: 40px;
+  height: 2px;
+  background: ${({ theme }) => theme.accent};
+  border-radius: 2px;
+  margin: 4px 0;
+`;
+
+// Buttons
+const ButtonRow = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+const Btn = styled(motion.button)`
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+`;
+
+const FlipBtn = styled(Btn)`
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+  &:hover { background: rgba(255,255,255,0.18); }
+`;
+
+const ExportBtn = styled(Btn)`
+  background: linear-gradient(135deg, #f6d365, #fda085);
+  color: #1a1a1a;
+  &:hover { opacity: 0.9; }
+`;
+
+// Modal
+const Overlay = styled(motion.div)`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
 `;
 
-const ShareContent = styled.div`
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
+const Modal = styled(motion.div)`
+  background: #1e1e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 36px;
   width: 90%;
-  max-width: 400px;
+  max-width: 380px;
   position: relative;
 `;
 
-const ShareTitle = styled.h3`
-  margin-bottom: 20px;
-  color: #3A4A5F;
+const ModalTitle = styled.h3`
+  font-family: 'Playfair Display', serif;
+  color: #ffffff;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
 `;
 
-const ShareInput = styled.div`
-  display: flex;
-  margin-bottom: 20px;
-  
-  input {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px 0 0 4px;
-    font-size: 14px;
-  }
-  
-  button {
-    background: #3A4A5F;
-    color: white;
-    border: none;
-    padding: 0 15px;
-    cursor: pointer;
-    border-radius: 0 4px 4px 0;
-    transition: background 0.3s;
-    
-    &:hover {
-      background: #2C3A4A;
-    }
-  }
+const ModalSub = styled.p`
+  color: rgba(255,255,255,0.45);
+  font-size: 0.82rem;
+  margin-bottom: 28px;
 `;
 
-const ShareSocial = styled.div`
+const ExportOptions = styled.div`
   display: flex;
+  gap: 16px;
   justify-content: center;
-  gap: 20px;
-  margin-top: 20px;
-  
-  a {
-    color: #3A4A5F;
-    font-size: 24px;
-    transition: color 0.3s;
-    
-    &:hover {
-      color: #1E88E5;
-    }
-  }
 `;
 
-const CloseButton = styled.button`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  font-size: 20px;
+const ExportOption = styled.button`
+  flex: 1;
+  padding: 20px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: #ffffff;
   cursor: pointer;
-  color: #666;
-  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s;
   &:hover {
-    color: #333;
-  }
-`;
-
-const ShareButton = styled.button`
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background: #333d35;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  z-index: 10;
-  
-  &:hover {
-    background: #2C3A4A;
-    transform: scale(1.1);
-  }
-`;
-
-const CardBack = styled(CardFace).attrs({
-  className: 'card-face'
-})`
-  background: #333d35;
-  transform: rotateY(180deg);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  text-align: center;
-  color: white;
-`;
-
-const CompanyName = styled.h2`
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: white;
-`;
-
-const JobTitle = styled.p`
-  margin: 0;
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
-`;
-
-const TopSection = styled.div`
-  background: #333d35;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-`;
-
-const BottomSection = styled.div`
-  background: #F0EEE8;
-  flex: 1;
-  display: flex;
-`;
-
-const LeftSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-  border-right: 1px solid #ddd;
-`;
-
-const RightSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 10px;
-`;
-
-const SocialIcons = styled.div`
-  display: flex;
-  gap: 15px;
-  margin: 10px 0;
-  color: #333d35;
-  
-  a {
-    color: inherit;
-    transition: color 0.3s;
-    
-    &:hover {
-      color: #4a5d4f;
-    }
-  }
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  color: white;
-  font-size: 24px;
-  font-weight: 600;
-  text-align: center;
-`;
-
-const Subtitle = styled.p`
-  margin: 5px 0 0 0;
-  color: white;
-  font-size: 14px;
-  text-align: center;
-`;
-
-const ContactInfo = styled.p`
-  margin: 5px 0;
-  color: #2C3E50;
-  font-size: 12px;
-  text-align: left;
-`;
-
-const SocialHandle = styled.p`
-  margin: 5px 0 0 0;
-  color: #2C3E50;
-  font-size: 10px;
-  text-align: center;
-`;
-
-const FlipButton = styled(motion.button)`
-  margin-top: 20px;
-  padding: 8px 16px;
-  background: #2C3E50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: #1A252F;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.25);
     transform: translateY(-2px);
   }
-
-  &:active {
-    transform: translateY(0);
-  }
 `;
 
-const BusinessCard = ({ 
-  title = 'VISIONARY VOGUE', 
-  subtitle = 'TITLE', 
-  socialMedia = '@SOCIALMEDIAHANDLES', 
-  website = 'WWW.WEBSITE.COM', 
-  email = 'MYWORKGMAIL.COM', 
-  phone = '123-456-789',
-  facebook = '',
-  twitter = '',
-  instagram = ''
-}) => {
+const CloseBtn = styled.button`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #fff; background: rgba(255,255,255,0.15); }
+`;
+
+// --- Component ---
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+const BusinessCard = ({ data }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [showShare, setShowShare] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const cardRef = useRef();
-  
-  const socialLinks = {
-    facebook: facebook || '#',
-    twitter: twitter || '#',
-    instagram: instagram || '#',
-    website: website.startsWith('http') ? website : `https://${website}`
+  const [showExport, setShowExport] = useState(false);
+  const cardFrontRef = useRef();
+
+  const theme = THEMES[data.theme] || THEMES.midnight;
+
+  const socialLinks = [
+    data.linkedin && { href: data.linkedin, icon: <FaLinkedinIn size={11} /> },
+    data.twitter && { href: data.twitter, icon: <FaTwitter size={11} /> },
+    data.instagram && { href: data.instagram, icon: <FaInstagram size={11} /> },
+    data.website && { href: data.website.startsWith('http') ? data.website : `https://${data.website}`, icon: <FaGlobe size={11} /> },
+  ].filter(Boolean);
+
+  const captureCard = async () => {
+    const canvas = await html2canvas(cardFrontRef.current, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: null,
+      logging: false,
+    });
+    return canvas;
   };
 
-  const handleShareClick = (e) => {
-    e.stopPropagation();
-    setShowShare(true);
+  const exportJPEG = async () => {
+    const canvas = await captureCard();
+    const link = document.createElement('a');
+    link.download = `${(data.name || 'business-card').toLowerCase().replace(/\s+/g, '-')}.jpg`;
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
   };
 
-  const handleCopy = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const exportAsJPEG = async () => {
-    try {
-      // Create a temporary container for the card
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '350px';
-      tempContainer.style.height = '200px';
-      document.body.appendChild(tempContainer);
-      
-      // Clone the card and append to temp container
-      const cardClone = cardRef.current.cloneNode(true);
-      tempContainer.appendChild(cardClone);
-      
-      // Make sure we're showing the front of the card
-      cardClone.style.transform = 'rotateY(0)';
-      
-      // Create canvas from the cloned card
-      const canvas = await html2canvas(cardClone, {
-        scale: 2,
-        backgroundColor: null,
-        logging: false,
-        useCORS: true,
-        onclone: (clonedDoc, element) => {
-          // Ensure we're showing the front of the card
-          const cardFaces = element.querySelectorAll('.card-face');
-          cardFaces[0].style.display = 'flex';
-          cardFaces[1].style.display = 'none';
-        }
-      });
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.download = `${title.toLowerCase().replace(/\s+/g, '-')}-business-card.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.9);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up
-      document.body.removeChild(tempContainer);
-    } catch (error) {
-      console.error('Error generating JPEG:', error);
-    }
-  };
-
-  const exportAsPDF = async () => {
-    try {
-      // Create a temporary container for the card
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '0';
-      tempContainer.style.width = '350px';
-      tempContainer.style.height = '200px';
-      document.body.appendChild(tempContainer);
-      
-      // Clone the card and append to temp container
-      const cardClone = cardRef.current.cloneNode(true);
-      tempContainer.appendChild(cardClone);
-      
-      // Make sure we're showing the front of the card
-      cardClone.style.transform = 'rotateY(0)';
-      
-      // Create canvas from the cloned card
-      const canvas = await html2canvas(cardClone, {
-        scale: 2,
-        backgroundColor: null,
-        logging: false,
-        useCORS: true,
-        onclone: (clonedDoc, element) => {
-          // Ensure we're showing the front of the card
-          const cardFaces = element.querySelectorAll('.card-face');
-          cardFaces[0].style.display = 'flex';
-          cardFaces[1].style.display = 'none';
-        }
-      });
-      
-      // Create PDF
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: [86, 54] // Standard business card size in mm (3.37" x 2.125")
-      });
-      
-      // Calculate dimensions to maintain aspect ratio
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      // Clean up
-      document.body.removeChild(tempContainer);
-      
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${title.toLowerCase().replace(/\s+/g, '-')}-business-card.pdf`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-    }
+  const exportPDF = async () => {
+    const canvas = await captureCard();
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [86, 54] });
+    const w = pdf.internal.pageSize.getWidth();
+    const h = pdf.internal.pageSize.getHeight();
+    pdf.addImage(imgData, 'JPEG', 0, 0, w, h);
+    pdf.save(`${(data.name || 'business-card').toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-      <CardContainer>
-        <Card 
-          ref={cardRef}
-          animate={{ 
-            rotateY: isFlipped ? 180 : 0,
-            scale: 1.02
-          }}
-          transition={{ 
-            rotateY: { duration: 0.6, ease: "easeInOut" },
-            scale: { duration: 0.2 }
-          }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={(e) => {
-            // Only flip if we're not clicking on a button
-            if (!e.target.closest('button')) {
-              setIsFlipped(!isFlipped);
-            }
-          }}
+    <Wrapper>
+      <CardScene>
+        <CardInner
+          animate={{ rotateY: isFlipped ? 180 : 0 }}
+          transition={{ duration: 0.6, ease: 'easeInOut' }}
+          style={{ transformStyle: 'preserve-3d' }}
         >
-          <CardFront>
+          <CardFront theme={theme} ref={cardFrontRef}>
             <TopSection>
-              <Title>{title}</Title>
-              <Subtitle>{subtitle}</Subtitle>
+              <Avatar theme={theme}>{getInitials(data.name)}</Avatar>
+              <NameBlock>
+                <CardName theme={theme}>{data.name || 'Your Name'}</CardName>
+                <CardTitle theme={theme}>{data.title || 'Title / Position'}</CardTitle>
+                <CardCompany theme={theme}>{data.company || 'Company Name'}</CardCompany>
+              </NameBlock>
             </TopSection>
-            <BottomSection>
-              <LeftSection>
+            <AccentLine theme={theme} />
+            <BottomSection theme={theme}>
+              <ContactBlock>
+                {data.email && <ContactItem theme={theme}>{data.email}</ContactItem>}
+                {data.phone && <ContactItem theme={theme}>{data.phone}</ContactItem>}
+                {data.website && <ContactItem theme={theme}>{data.website}</ContactItem>}
+              </ContactBlock>
+              {socialLinks.length > 0 && (
                 <SocialIcons>
-                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" title="Facebook">
-                    <FaFacebook size={16} />
-                  </a>
-                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" title="Twitter">
-                    <FaTwitter size={16} />
-                  </a>
-                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" title="Instagram">
-                    <FaInstagram size={16} />
-                  </a>
-                  <a href={socialLinks.website} target="_blank" rel="noopener noreferrer" title="Website">
-                    <FaGlobe size={16} />
-                  </a>
+                  {socialLinks.map((s, i) => (
+                    <IconLink key={i} href={s.href} target="_blank" rel="noopener noreferrer" theme={theme}>
+                      {s.icon}
+                    </IconLink>
+                  ))}
                 </SocialIcons>
-                <SocialHandle>{socialMedia}</SocialHandle>
-              </LeftSection>
-              <RightSection>
-                <ContactInfo>{website}</ContactInfo>
-                <ContactInfo>{email}</ContactInfo>
-                <ContactInfo>{phone}</ContactInfo>
-              </RightSection>
+              )}
             </BottomSection>
           </CardFront>
-          <CardBack>
-            <CompanyName>{title}</CompanyName>
-            <JobTitle>{subtitle}</JobTitle>
+
+          <CardBack theme={theme}>
+            <BackLine theme={theme} />
+            <BackName theme={theme}>{data.name || 'Your Name'}</BackName>
+            <BackTitle theme={theme}>{data.company || 'Company'}</BackTitle>
+            <BackLine theme={theme} />
           </CardBack>
-        </Card>
-      </CardContainer>
-      <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-        <FlipButton 
-          as={motion.button}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsFlipped(!isFlipped);
-          }}
+        </CardInner>
+      </CardScene>
+
+      <ButtonRow>
+        <FlipBtn
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setIsFlipped(f => !f)}
         >
           {isFlipped ? 'View Front' : 'View Back'}
-        </FlipButton>
-        <ShareButton 
-          onClick={handleShareClick}
-          style={{
-            position: 'static',
-            transform: 'none',
-            marginLeft: '10px',
-            width: 'auto',
-            padding: '0 15px',
-            borderRadius: '4px',
-            display: 'inline-flex',
-            gap: '8px'
-          }}
+        </FlipBtn>
+        <ExportBtn
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowExport(true)}
         >
-          <FaShare size={14} />
-          <span>Export</span>
-        </ShareButton>
-      </div>
+          <FaDownload size={12} /> Export
+        </ExportBtn>
+      </ButtonRow>
 
-      {showShare && (
-        <ShareOverlay
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowShare(false);
-            }
-          }}
-        >
-          <ShareContent>
-            <CloseButton onClick={() => setShowShare(false)}>
-              <FaTimes />
-            </CloseButton>
-            <ShareTitle>Export Business Card</ShareTitle>
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <p style={{ color: '#666', marginBottom: '20px' }}>Download your business card as an image or PDF</p>
-              
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
-                <button 
-                  onClick={exportAsJPEG}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    padding: '15px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    width: '120px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  <FaFileImage size={32} color="#3A4A5F" style={{ marginBottom: '10px' }} />
-                  <span>JPEG</span>
-                </button>
-                
-                <button 
-                  onClick={exportAsPDF}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    padding: '15px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    background: 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    width: '120px'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                  onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  <FaFilePdf size={32} color="#E74C3C" style={{ marginBottom: '10px' }} />
-                  <span>PDF</span>
-                </button>
-              </div>
-              
-              <div style={{ marginTop: '20px', fontSize: '12px', color: '#999' }}>
-                <p>Standard business card size (3.5" x 2")</p>
-                <p>High resolution (2x scale)</p>
-              </div>
-            </div>
-          </ShareContent>
-        </ShareOverlay>
-      )}
-    </div>
+      <AnimatePresence>
+        {showExport && (
+          <Overlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={e => e.target === e.currentTarget && setShowExport(false)}
+          >
+            <Modal
+              initial={{ opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CloseBtn onClick={() => setShowExport(false)}><FaTimes size={12} /></CloseBtn>
+              <ModalTitle>Export Card</ModalTitle>
+              <ModalSub>Download your card in your preferred format</ModalSub>
+              <ExportOptions>
+                <ExportOption onClick={exportJPEG}>
+                  <FaFileImage size={28} color="#a8edea" />
+                  JPEG Image
+                </ExportOption>
+                <ExportOption onClick={exportPDF}>
+                  <FaFilePdf size={28} color="#f6a0a0" />
+                  PDF File
+                </ExportOption>
+              </ExportOptions>
+            </Modal>
+          </Overlay>
+        )}
+      </AnimatePresence>
+    </Wrapper>
   );
 };
 
